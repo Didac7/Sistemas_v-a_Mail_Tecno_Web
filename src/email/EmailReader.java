@@ -19,28 +19,37 @@ public class EmailReader {
     
     /**
      * Configura la conexión al servidor de correo
+     * Usa POP3 puerto 110 (como telnet) sin SSL/TLS
      */
     private Properties getMailProperties() {
         Properties props = new Properties();
-        props.put("mail.store.protocol", "imaps");
-        props.put("mail.imaps.host", EmailConfig.IMAP_HOST);
-        props.put("mail.imaps.port", EmailConfig.IMAP_PORT);
-        props.put("mail.imaps.ssl.enable", "true");
-        props.put("mail.imaps.ssl.trust", EmailConfig.IMAP_HOST);
+        props.put("mail.store.protocol", "pop3");
+        props.put("mail.pop3.host", EmailConfig.IMAP_HOST);
+        props.put("mail.pop3.port", "110");
+        props.put("mail.pop3.auth", "false"); // Desactivar auth automático
+        props.put("mail.pop3.starttls.enable", "false");
+        props.put("mail.pop3.ssl.enable", "false");
+        props.put("mail.pop3.socketFactory.fallback", "true");
+        props.put("mail.pop3.connectiontimeout", "10000");
+        props.put("mail.pop3.timeout", "10000");
         return props;
     }
     
     /**
-     * Conecta al servidor de correo
+     * Conecta al servidor de correo usando POP3 simple
      */
     private void conectar() throws MessagingException {
         Properties props = getMailProperties();
-        Session session = Session.getInstance(props);
+        Session session = Session.getInstance(props, null);
+        session.setDebug(true); // Activar debug para ver qué pasa
         
-        store = session.getStore("imaps");
-        store.connect(EmailConfig.IMAP_HOST, EmailConfig.EMAIL_ADDRESS, EmailConfig.EMAIL_PASSWORD);
+        store = session.getStore("pop3");
         
-        inbox = store.getFolder(EmailConfig.INBOX_FOLDER);
+        // Conectar con usuario sin dominio (grupo08sc en lugar de grupo08sc@tecnoweb.org.bo)
+        String username = EmailConfig.EMAIL_ADDRESS.split("@")[0]; // "grupo09sc"
+        store.connect(EmailConfig.IMAP_HOST, 110, username, EmailConfig.EMAIL_PASSWORD);
+        
+        inbox = store.getFolder("INBOX");
         inbox.open(Folder.READ_WRITE);
     }
     
@@ -50,7 +59,7 @@ public class EmailReader {
     private void desconectar() {
         try {
             if (inbox != null && inbox.isOpen()) {
-                inbox.close(false);
+                inbox.close(true); // true = aplicar cambios (eliminar mensajes marcados)
             }
             if (store != null && store.isConnected()) {
                 store.close();
@@ -168,7 +177,8 @@ public class EmailReader {
      * Marca un mensaje como leído
      */
     private void marcarComoLeido(Message mensaje) throws MessagingException {
-        mensaje.setFlag(Flags.Flag.SEEN, true);
+        // POP3 no soporta SEEN flag, eliminamos el mensaje del servidor
+        mensaje.setFlag(Flags.Flag.DELETED, true);
     }
     
     /**

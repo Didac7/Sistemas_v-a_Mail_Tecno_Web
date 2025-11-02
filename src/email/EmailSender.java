@@ -12,36 +12,31 @@ public class EmailSender {
     
     /**
      * Configura las propiedades del servidor SMTP
+     * Usa puerto 25 sin TLS (como telnet)
      */
     private Properties getMailProperties() {
         Properties props = new Properties();
         props.put("mail.smtp.host", EmailConfig.SMTP_HOST);
-        props.put("mail.smtp.port", EmailConfig.SMTP_PORT);
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.ssl.trust", EmailConfig.SMTP_HOST);
-        props.put("mail.smtp.ssl.protocols", "TLSv1.2");
+        props.put("mail.smtp.port", "25");
+        props.put("mail.smtp.auth", "false"); // Sin autenticación compleja
+        props.put("mail.smtp.starttls.enable", "false");
+        props.put("mail.smtp.ssl.enable", "false");
+        props.put("mail.smtp.connectiontimeout", "10000");
+        props.put("mail.smtp.timeout", "10000");
         
         return props;
     }
     
     /**
-     * Envía un correo electrónico
+     * Envía un correo electrónico usando SMTP simple
      */
     public boolean enviarCorreo(String destinatario, String asunto, String cuerpo) {
         try {
             Properties props = getMailProperties();
             
-            // Crear sesión con autenticación
-            Session session = Session.getInstance(props, new Authenticator() {
-                @Override
-                protected PasswordAuthentication getPasswordAuthentication() {
-                    return new PasswordAuthentication(
-                        EmailConfig.EMAIL_ADDRESS, 
-                        EmailConfig.EMAIL_PASSWORD
-                    );
-                }
-            });
+            // Crear sesión SIN autenticación
+            Session session = Session.getInstance(props);
+            session.setDebug(true); // Ver qué pasa
             
             // Crear mensaje
             Message mensaje = new MimeMessage(session);
